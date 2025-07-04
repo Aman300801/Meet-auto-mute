@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Auto Mute Other Google Meet Tabs",
+  "name": "Auto Mute Meet",
   "version": "1.0",
   "description": "Mutes all other Google Meet tabs when you switch to one.",
   "permissions": ["scripting", "tabs", "activeTab", "storage"],
@@ -9,7 +9,7 @@
   },
   "host_permissions": ["https://meet.google.com/*"],
   "icons": {
-    "128": "icon.png"
+    "128": "mute.png"
   },
   "action":{
     "default_popup": "popup.html",
