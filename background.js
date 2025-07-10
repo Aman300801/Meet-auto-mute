@@ -33,10 +33,20 @@ async function muteOtherMeetTabs() {
                   clickIfExists('[aria-label*="microphone"]');
                 }
               } else if (tabUrl.includes("zoom.us")) {
-                const micBtn = document.querySelector(
-                  'button.join-audio-container__btn[aria-label*="mute"]'
+                const iframe = document.querySelector("iframe");
+                const iframeDoc =
+                  iframe?.contentDocument || iframe?.contentWindow?.document;
+
+                const micBtn = iframeDoc?.querySelector(
+                  ".join-audio-container__btn"
                 );
-                if (micBtn) {
+                const ariaLabel = micBtn
+                  ?.getAttribute("aria-label")
+                  .toLowerCase();
+
+                console.log(ariaLabel);
+
+                if (micBtn && !ariaLabel.includes("unmute")) {
                   micBtn.click();
                 }
               } else if (tabUrl.includes("teams.microsoft.com")) {
