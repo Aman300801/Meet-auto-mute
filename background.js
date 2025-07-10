@@ -2,52 +2,74 @@ let lastClickedMeetTabId = null;
 
 async function muteOtherMeetTabs() {
   const { muteEnabled } = await chrome.storage.sync.get("muteEnabled");
-  console.log("Mute Enabled:", muteEnabled);
-
   if (!muteEnabled) return;
 
-  chrome.tabs.query({ url: "https://meet.google.com/*" }, (tabs) => {
-    console.log(tabs);
-    console.log(lastClickedMeetTabId);
-    for (const tab of tabs) {
-      if (tab.id !== lastClickedMeetTabId) {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            const micBtn =
-              document.querySelector('[aria-label*="microphone"]') ||
-              document.querySelector("[data-is-muted]");
+  chrome.tabs.query(
+    {
+      url: [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*",
+      ],
+    },
+    (tabs) => {
+      tabs
+        .filter((tab) => tab.id !== lastClickedMeetTabId)
+        .forEach((tab) => {
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            args: [tab.url],
+            func: (tabUrl) => {
+              const clickIfExists = (selector) => {
+                const el = document.querySelector(selector);
+                if (el) el.click();
+              };
 
-            const micStatusElement = document.querySelector("[data-is-muted]");
-            const isMicMuted =
-              micStatusElement?.getAttribute("data-is-muted") == "true";
-            console.log(isMicMuted);
-
-            if (micBtn && !isMicMuted) {
-              micBtn.click();
-              console.log("🔇 Mic muted by extension");
-            }
-          },
+              if (tabUrl.includes("meet.google.com")) {
+                const micStatus = document.querySelector("[data-is-muted]");
+                const isMuted =
+                  micStatus?.getAttribute("data-is-muted") === "true";
+                if (!isMuted) {
+                  clickIfExists('[aria-label*="microphone"]');
+                }
+              } else if (tabUrl.includes("zoom.us")) {
+                const micBtn = document.querySelector(
+                  'button.join-audio-container__btn[aria-label*="mute"]'
+                );
+                if (micBtn) {
+                  micBtn.click();
+                }
+              } else if (tabUrl.includes("teams.microsoft.com")) {
+                const micBtn = document.querySelector(
+                  '[aria-label*="Microphone"]'
+                );
+                const isMuted = micBtn?.getAttribute("aria-pressed") === "true";
+                if (!isMuted && micBtn) {
+                  micBtn.click();
+                }
+              }
+            },
+          });
         });
-      }
     }
-  });
+  );
 }
 
 chrome.storage.onChanged.addListener((changes) => {
-  if ("muteEnabled" in changes && changes.muteEnabled.newValue === true) {
+  if (changes.muteEnabled?.newValue === true) {
     muteOtherMeetTabs();
   }
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   const tab = await chrome.tabs.get(tabId);
-  console.log(tab);
-  if (
+  const isMeetTab =
     tab.url &&
-    tab.url.startsWith("https://meet.google.com") &&
-    tab.status === "complete"
-  ) {
+    (tab.url.includes("meet.google.com") ||
+      tab.url.includes("zoom.us") ||
+      tab.url.includes("teams.microsoft.com"));
+
+  if (isMeetTab && tab.status === "complete") {
     lastClickedMeetTabId = tabId;
     muteOtherMeetTabs();
   }
