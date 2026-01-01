@@ -35,6 +35,7 @@ function executeSafe(tabId, func, args = []) {
   );
 }
 
+/* ---------------- CORE ---------------- */
 
 async function muteOtherMeetTabs() {
   const { muteEnabled } = await chrome.storage.sync.get("muteEnabled");
@@ -50,9 +51,12 @@ async function muteOtherMeetTabs() {
         return;
       }
 
+      // 🔒 HARD browser mute (cannot unmute accidentally)
       chrome.tabs.update(tab.id, { muted: true });
 
+      // 🔁 UI mute
       executeSafe(tab.id, (tabUrl) => {
+        /* ---------- HELPERS (INSIDE CONTEXT) ---------- */
 
         const attempt = (fn, retries = 10, delay = 500) => {
           const run = () => {
@@ -64,8 +68,9 @@ async function muteOtherMeetTabs() {
           run();
         };
 
+        /* ---------- GOOGLE MEET ---------- */
         if (tabUrl.includes("meet.google.com")) {
-          // attempt(() => {
+          attempt(() => {
             const micBtn = document.querySelector(
               'button[jsname="hw0c9"][data-is-muted="false"]'
             );
@@ -75,14 +80,16 @@ async function muteOtherMeetTabs() {
             const label =
               micBtn.getAttribute("aria-label")?.toLowerCase() || "";
 
+            // ✅ click ONLY when mic is ON
             if (label.includes("turn off")) {
               micBtn.click();
               return true;
             }
             return false;
-          // });
+          });
         }
 
+        /* ---------- ZOOM ---------- */
         else if (tabUrl.includes("zoom.us")) {
           attempt(() => {
             const buttons = document.querySelectorAll("button");
@@ -98,6 +105,7 @@ async function muteOtherMeetTabs() {
           });
         }
 
+        /* ---------- TEAMS ---------- */
         else if (tabUrl.includes("teams.microsoft.com")) {
           attempt(() => {
             const micBtn = document.querySelector(
@@ -115,6 +123,7 @@ async function muteOtherMeetTabs() {
   });
 }
 
+/* ---------------- EVENTS ---------------- */
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.muteEnabled?.newValue === true) {
